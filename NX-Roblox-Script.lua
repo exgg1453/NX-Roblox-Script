@@ -2636,6 +2636,58 @@ MiscTab:CreateButton({
     end,
 })
 
+MiscTab:CreateSection("Stat Editor (Client-Side - Risky)")
+
+do
+    local STAT_VALUE = 999
+    local skipWords = { "walk", "run", "jump", "speed", "stamina", "sprint", "velocity" }
+    local function isSkipped(name)
+        local l = string.lower(name)
+        for _, w in ipairs(skipWords) do
+            if string.find(l, w, 1, true) then return true end
+        end
+        return false
+    end
+
+    MiscTab:CreateSlider({
+        Name = "Stat Value",
+        Range = { 1, 1000000 },
+        Increment = 1,
+        Suffix = "",
+        CurrentValue = 999,
+        Callback = function(v) STAT_VALUE = v end,
+    })
+
+    MiscTab:CreateButton({
+        Name = "Set My Stats To Value (Money etc.)",
+        Callback = function()
+            local changed = 0
+            local roots = {}
+            local ls = LocalPlayer:FindFirstChild("leaderstats")
+            if ls then table.insert(roots, ls) end
+            table.insert(roots, LocalPlayer)
+            local seen = {}
+            for _, root in ipairs(roots) do
+                for _, v in ipairs(root:GetDescendants()) do
+                    if not seen[v] and (v:IsA("IntValue") or v:IsA("NumberValue") or v:IsA("DoubleConstrainedValue") or v:IsA("IntConstrainedValue")) then
+                        if not isSkipped(v.Name) then
+                            seen[v] = true
+                            pcall(function() v.Value = STAT_VALUE end)
+                            changed = changed + 1
+                        end
+                    end
+                end
+            end
+            Rayfield:Notify({
+                Title = "Stats Set: " .. changed,
+                Content = "Client-side only. If it snaps back, the game is server-authoritative and this can't change real values.",
+                Duration = 8,
+                Image = "coins",
+            })
+        end,
+    })
+end
+
 MiscTab:CreateButton({
     Name = "Server Hop (Random)",
     Callback = function()
