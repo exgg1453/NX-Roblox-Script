@@ -2640,11 +2640,26 @@ MiscTab:CreateSection("Stat Editor (Client-Side - Risky)")
 
 do
     local STAT_VALUE = 999
-    local skipWords = { "walk", "run", "jump", "speed", "stamina", "sprint", "velocity" }
-    local function isSkipped(name)
+    local skipWords = { "walk", "run", "jump", "speed", "stamina", "sprint", "velocity", "position", "pos", "icon", "image", "rotation", "size", "scale", "offset", "index", "slot", "page", "volume", "zoom", "fov", "time", "cooldown", "id" }
+    local statWords = { "money", "cash", "coin", "gold", "gem", "credit", "token", "kill", "win", "level", "xp", "exp", "star", "trophy", "buck", "diamond", "score", "brainrot", "currency", "bank", "wallet", "balance", "point", "kills", "wins", "wins", "candy", "tix", "click", "rebirth", "power", "strength", "wealth", "cookie", "food", "wood", "stone", "iron" }
+
+    local function nameHas(name, list)
         local l = string.lower(name)
-        for _, w in ipairs(skipWords) do
+        for _, w in ipairs(list) do
             if string.find(l, w, 1, true) then return true end
+        end
+        return false
+    end
+
+    local function isValueObj(v)
+        return v:IsA("IntValue") or v:IsA("NumberValue") or v:IsA("DoubleConstrainedValue") or v:IsA("IntConstrainedValue")
+    end
+
+    local function insideUI(v)
+        local p = v
+        while p and p ~= LocalPlayer do
+            if p.Name == "PlayerGui" or p.Name == "PlayerScripts" or p.Name == "StarterGear" then return true end
+            p = p.Parent
         end
         return false
     end
@@ -2662,25 +2677,32 @@ do
         Name = "Set My Stats To Value (Money etc.)",
         Callback = function()
             local changed = 0
-            local roots = {}
-            local ls = LocalPlayer:FindFirstChild("leaderstats")
-            if ls then table.insert(roots, ls) end
-            table.insert(roots, LocalPlayer)
             local seen = {}
-            for _, root in ipairs(roots) do
-                for _, v in ipairs(root:GetDescendants()) do
-                    if not seen[v] and (v:IsA("IntValue") or v:IsA("NumberValue") or v:IsA("DoubleConstrainedValue") or v:IsA("IntConstrainedValue")) then
-                        if not isSkipped(v.Name) then
-                            seen[v] = true
-                            pcall(function() v.Value = STAT_VALUE end)
-                            changed = changed + 1
-                        end
+
+            local ls = LocalPlayer:FindFirstChild("leaderstats")
+            if ls then
+                for _, v in ipairs(ls:GetDescendants()) do
+                    if isValueObj(v) and not seen[v] and not nameHas(v.Name, skipWords) then
+                        seen[v] = true
+                        pcall(function() v.Value = STAT_VALUE end)
+                        changed = changed + 1
                     end
                 end
             end
+
+            for _, v in ipairs(LocalPlayer:GetDescendants()) do
+                if isValueObj(v) and not seen[v] and not insideUI(v) then
+                    if nameHas(v.Name, statWords) and not nameHas(v.Name, skipWords) then
+                        seen[v] = true
+                        pcall(function() v.Value = STAT_VALUE end)
+                        changed = changed + 1
+                    end
+                end
+            end
+
             Rayfield:Notify({
                 Title = "Stats Set: " .. changed,
-                Content = "Client-side only. If it snaps back, the game is server-authoritative and this can't change real values.",
+                Content = "Only real stat values (leaderstats + money-like names). Client-side; server-authoritative games will snap it back.",
                 Duration = 8,
                 Image = "coins",
             })
