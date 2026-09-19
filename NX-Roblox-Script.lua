@@ -2710,6 +2710,94 @@ do
     })
 end
 
+MiscTab:CreateSection("Game Speed / Pause (Local)")
+
+do
+    local RunService = game:GetService("RunService")
+    local paused = false
+    local savedAnchor = nil
+    local savedStates = {}
+
+    MiscTab:CreateToggle({
+        Name = "Pause (Freeze My Character)",
+        CurrentValue = false,
+        Callback = function(Value)
+            paused = Value
+            local char = LocalPlayer.Character
+            if not char then return end
+            if Value then
+                savedStates = {}
+                for _, p in ipairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") then
+                        savedStates[p] = p.Anchored
+                        pcall(function() p.Anchored = true end)
+                    end
+                end
+                Rayfield:Notify({ Title = "Paused (You)", Content = "Your character is frozen. The server keeps running - this freezes you locally.", Duration = 5, Image = "pause" })
+            else
+                for p, state in pairs(savedStates) do
+                    if p and p.Parent then pcall(function() p.Anchored = state end) end
+                end
+                savedStates = {}
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then pcall(function() hrp.Anchored = false end) end
+            end
+        end,
+    })
+
+    local speedOn = false
+    local speedMult = 2
+    local speedConn = nil
+
+    MiscTab:CreateSlider({
+        Name = "Speed Multiplier (Local)",
+        Range = { 1, 8 },
+        Increment = 1,
+        Suffix = "x",
+        CurrentValue = 2,
+        Callback = function(v) speedMult = v end,
+    })
+
+    MiscTab:CreateToggle({
+        Name = "Speed Up (My Movement + Animations)",
+        CurrentValue = false,
+        Callback = function(Value)
+            speedOn = Value
+            if Value then
+                if speedConn then pcall(function() speedConn:Disconnect() end) end
+                speedConn = RunService.Heartbeat:Connect(function()
+                    if not speedOn then return end
+                    local char = LocalPlayer.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    if hum then
+                        pcall(function() hum.WalkSpeed = 16 * speedMult end)
+                        local animator = hum:FindFirstChildOfClass("Animator")
+                        if animator then
+                            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                                pcall(function() track:AdjustSpeed(speedMult) end)
+                            end
+                        end
+                    end
+                end)
+                Rayfield:Notify({ Title = "Speed Up ON", Content = "Your movement and animations run faster. This affects you locally, not the whole server.", Duration = 6, Image = "fast-forward" })
+            else
+                if speedConn then pcall(function() speedConn:Disconnect() end) speedConn = nil end
+                local char = LocalPlayer.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    pcall(function() hum.WalkSpeed = 16 end)
+                    local animator = hum:FindFirstChildOfClass("Animator")
+                    if animator then
+                        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                            pcall(function() track:AdjustSpeed(1) end)
+                        end
+                    end
+                end
+            end
+        end,
+    })
+end
+
 MiscTab:CreateButton({
     Name = "Server Hop (Random)",
     Callback = function()
