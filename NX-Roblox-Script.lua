@@ -1716,6 +1716,82 @@ do
     })
 end
 
+do
+    local RunService = game:GetService("RunService")
+    local UIS = game:GetService("UserInputService")
+
+    local shiftLock = false
+    local shiftLockConn = nil
+    MovementTab:CreateToggle({
+        Name = "Force Shift Lock",
+        CurrentValue = false,
+        Callback = function(Value)
+            shiftLock = Value
+            if Value then
+                if shiftLockConn then pcall(function() shiftLockConn:Disconnect() end) end
+                shiftLockConn = RunService.RenderStepped:Connect(function()
+                    if not shiftLock then return end
+                    local char = LocalPlayer.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    local cam = Workspace.CurrentCamera
+                    if hum and hrp and cam then
+                        pcall(function() UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end)
+                        pcall(function() hum.AutoRotate = false end)
+                        local look = cam.CFrame.LookVector
+                        local flat = Vector3.new(look.X, 0, look.Z)
+                        if flat.Magnitude > 0.001 then
+                            hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + flat)
+                        end
+                    end
+                end)
+                Rayfield:Notify({ Title = "Shift Lock ON", Content = "Forced on even where the game blocks it. Best on PC (mouse).", Duration = 5, Image = "lock" })
+            else
+                if shiftLockConn then pcall(function() shiftLockConn:Disconnect() end) shiftLockConn = nil end
+                pcall(function() UIS.MouseBehavior = Enum.MouseBehavior.Default end)
+                local char = LocalPlayer.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then pcall(function() hum.AutoRotate = true end) end
+            end
+        end,
+    })
+
+    local wallhop = false
+    local wallhopConn = nil
+    MovementTab:CreateToggle({
+        Name = "Auto Wallhop",
+        CurrentValue = false,
+        Callback = function(Value)
+            wallhop = Value
+            if Value then
+                if wallhopConn then pcall(function() wallhopConn:Disconnect() end) end
+                wallhopConn = RunService.Heartbeat:Connect(function()
+                    if not wallhop then return end
+                    local char = LocalPlayer.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if not hum or not hrp then return end
+                    local params = RaycastParams.new()
+                    params.FilterType = Enum.RaycastFilterType.Exclude
+                    params.FilterDescendantsInstances = { char }
+                    local look = hrp.CFrame.LookVector
+                    local hit = Workspace:Raycast(hrp.Position, Vector3.new(look.X, 0, look.Z).Unit * 3.5, params)
+                    if hit then
+                        pcall(function() hum:Move(Vector3.new(look.X, 0, look.Z), false) end)
+                        local vy = hrp.AssemblyLinearVelocity.Y
+                        if vy < 3 then
+                            pcall(function() hum.Jump = true end)
+                        end
+                    end
+                end)
+                Rayfield:Notify({ Title = "Auto Wallhop ON", Content = "Face a wall and it auto-jumps up it. Works where the game allows wall jumping.", Duration = 6, Image = "chevrons-up" })
+            else
+                if wallhopConn then pcall(function() wallhopConn:Disconnect() end) wallhopConn = nil end
+            end
+        end,
+    })
+end
+
 local function createESP(player)
     if player == LocalPlayer then return end
     if espPlayerData[player] then return end
